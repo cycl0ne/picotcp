@@ -196,7 +196,9 @@ CORE_OBJ= stack/pico_stack.o \
           stack/pico_socket.o \
           stack/pico_socket_multicast.o \
           stack/pico_tree.o \
-          stack/pico_md5.o
+          stack/pico_md5.o \
+          stack/pico_list.o \
+          stack/pico_timer.o
 
 POSIX_OBJ+= modules/pico_dev_vde.o \
             modules/pico_dev_tun.o \
