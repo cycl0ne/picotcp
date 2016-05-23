@@ -28,6 +28,7 @@
 #include "pico_tcp.h"
 #include "pico_socket.h"
 #include "heap.h"
+#include "pico_list.h"
 
 volatile pico_time pico_tick;
 
@@ -40,7 +41,7 @@ struct pico_timer
     void (*timer)(pico_time timestamp, void *arg);
 };
  
-#if 0
+#if 1
 
 List_t pico_timer_list;
 
@@ -63,12 +64,12 @@ void pico_check_timers(void)
 {
 	struct pico_timer	*t;
 	struct pico_timer_ref *ptr1, *ptr2;
-	pico_tick    = PICO_TIME_MS;
+	pico_tick    = PICO_TIME_MS();
 	
 	ForeachNodeSafe(&pico_timer_list, ptr1, ptr2)
 	{
 		if (ptr1->expire > pico_tick) break;
-		Remove(ptr1);
+		pico_remove((pNode)ptr1);
 		t = ptr1->tmr;
         if (t && t->timer) t->timer(pico_tick, t->arg);
         if (t) PICO_FREE(t);
@@ -78,7 +79,6 @@ void pico_check_timers(void)
 
 void MOCKABLE pico_timer_cancel(uint32_t id)
 {
-	uint32_t i;
 	struct pico_timer_ref *tref, *tref2;
 	if (id == 0u) return;
 
@@ -86,7 +86,7 @@ void MOCKABLE pico_timer_cancel(uint32_t id)
 	{
 		if (tref->id == id)
 		{
-			Remove(tref);
+			pico_remove((pNode)tref);
 			if (tref->tmr) PICO_FREE(tref->tmr);
 			PICO_FREE(tref);
 			break;
@@ -96,15 +96,14 @@ void MOCKABLE pico_timer_cancel(uint32_t id)
 
 void pico_timer_cancel_hashed(uint32_t hash)
 {
-	uint32_t i;
 	struct pico_timer_ref *tref, *tref2;
-	if (id == 0u) return;
+	if (hash == 0u) return;
 
 	ForeachNodeSafe(&pico_timer_list, tref, tref2)
 	{
 		if (tref->hash == hash)
 		{
-			Remove(tref);
+			pico_remove((pNode)tref);
 			if (tref->tmr) PICO_FREE(tref->tmr);
 			PICO_FREE(tref);
 			break;
@@ -134,11 +133,11 @@ static void pico_insert_request(struct pico_timer_ref *tref)
 	{
 		if (tref->expire <= node->expire)
 		{
-			Insert(&pico_timer_list, &tref->ptr_node, &node->ptr_node.ln_Pred);
+			pico_insert(&pico_timer_list, &tref->ptr_node, node->ptr_node.ln_Pred);
 			return;
 		}
 	}
-	AddTail(&pico_timer_list, (pNode)tref);
+	pico_addtail(&pico_timer_list, (pNode)tref);
 }
 
 static uint32_t pico_timer_ref_add(pico_time expire, struct pico_timer *t, uint32_t id, uint32_t hash)
